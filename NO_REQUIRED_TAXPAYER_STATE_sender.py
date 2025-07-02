@@ -101,20 +101,23 @@ def main():
             continue
 
         if not usedesk_status:
-            message_body = {
-                "api_token": USE_DESK_TOKEN,
-                "subject": "NO_REQUIRED_TAXPAYER_STATE",
-                "message": (
-                    f"<p>Здравствуйте!<br><br>"
-                    f"При подписании ЭСФ у нашего клиента выходит ошибка - NO_REQUIRED_TAXPAYER_STATE.<br>"
-                    f"ИИН клиента — {tin}<br>"
-                    f"Просим исправить.<br></p>"
-                ),
-                "client_email": "djamil1ex@gmail.com,5599881@mail.ru",
-                "from": "user",
-                "channel_id": 64326,
-                "status": "2"
-            }
+message_body = {
+    "api_token": USE_DESK_TOKEN,
+    "subject": "NO_REQUIRED_TAXPAYER_STATE",
+    "message": (
+        f"<p>Здравствуйте!<br><br>"
+        f"При подписании ЭСФ у нашего клиента выходит ошибка - NO_REQUIRED_TAXPAYER_STATE.<br>"
+        f"ИИН клиента — {tin}<br>"
+        f"Просим исправить.<br></p>"
+    ),
+    "client_email": "djamil1ex@gmail.com",
+    "cc": [
+        "5599881@mail.ru"
+    ],
+    "from": "user",
+    "channel_id": 64326,
+    "status": "2"
+}
             response = requests.post(USE_DESK_URL, json=message_body)
             if response.status_code == 200:
                 ticket_id = response.json().get("ticket_id")
