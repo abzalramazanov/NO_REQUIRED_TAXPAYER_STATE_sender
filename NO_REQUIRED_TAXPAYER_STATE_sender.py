@@ -104,15 +104,10 @@ def main():
         if not usedesk_status:
             ticket_payload = {
                 "api_token": USE_DESK_TOKEN,
-                "subject": f"NO_REQUIRED_TAXPAYER_STATE",
+                "subject": "NO_REQUIRED_TAXPAYER_STATE",
+                "message": "автоматически созданный тикет.",
+                "private_comment": True,
                 "client_email": "djamil1ex@gmail.com",
-                "message": (
-                    f"<p>Здравствуйте!<br><br>"
-                    f"При подписании ЭСФ у нашего клиента выходит ошибка - <b>NO_REQUIRED_TAXPAYER_STATE</b>.<br>"
-                    f"ИИН клиента — {tin}<br>"
-                    f"Просим исправить.<br></p>"
-                ),
-                "from": "user",
                 "channel_id": 64326,
                 "status": "2"
             }
@@ -125,15 +120,24 @@ def main():
                     comment_payload = {
                         "api_token": USE_DESK_TOKEN,
                         "ticket_id": ticket_id,
-                        "message": ".",
+                        "message": (
+                            f"<p>Здравствуйте!<br><br>"
+                            f"При подписании ЭСФ у нашего клиента выходит ошибка - "
+                            f"<b>NO_REQUIRED_TAXPAYER_STATE</b>.<br>"
+                            f"ИИН клиента — {tin}<br>"
+                            f"Просим исправить.<br></p>"
+                        ),
                         "type": "public",
                         "from": "user",
-                        "cc": ["5599881@mail.ru"]
+                        "cc": ["5599881@mail.ru", "djamil1ex@gmail.com"]
                     }
-                    requests.post(USE_DESK_COMMENT_URL, json=comment_payload)
-                    ticket_url = f"https://secure.usedesk.ru/tickets/{ticket_id}"
-                    target_ws.update_cell(row_num, len(target_header) - 1, ticket_url)
-                    usedesk_status = ticket_url
+                    comment_response = requests.post(USE_DESK_COMMENT_URL, json=comment_payload)
+                    if comment_response.status_code == 200:
+                        ticket_url = f"https://secure.usedesk.ru/tickets/{ticket_id}"
+                        target_ws.update_cell(row_num, len(target_header) - 1, ticket_url)
+                        usedesk_status = ticket_url
+                    else:
+                        logger.error(f"❌ Ошибка создания комментария: {comment_response.text}")
                 else:
                     logger.error(f"❌ ticket_id не найден в ответе UseDesk для {tin}")
             except Exception as e:
@@ -159,7 +163,7 @@ def main():
             else:
                 logger.error(f"❌ Ошибка Telegram для {tin}: {tg_response.text}")
 
-    logger.info(f"\n✅ Готово! Добавлено: {added}, Обновлено: {updated}")
+    logger.info(f"✅ Готово! Добавлено: {added}, Обновлено: {updated}")
 
 if __name__ == "__main__":
     main()
