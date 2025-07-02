@@ -120,7 +120,8 @@ def main():
             try:
                 res_json = response.json()
                 logger.warning(f"Ответ create/ticket: {res_json}")
-                ticket_id = res_json.get("ticket", {}).get("id")
+                time.sleep(5)
+                ticket_id = res_json.get("ticket_id") or res_json.get("ticket", {}).get("id")
                 if ticket_id:
                     comment_payload = {
                         "api_token": USE_DESK_TOKEN,
