@@ -49,9 +49,10 @@ def main():
 
     try:
         tin_idx = source_header.index("tin")
+        name_idx = source_header.index("name")
         esf_idx = source_header.index("Статус ЭСФ")
     except ValueError:
-        raise Exception("❌ Не найдены колонки 'tin' и 'Статус ЭСФ' в исходной таблице")
+        raise Exception("❌ Не найдены колонки 'tin', 'name' и 'Статус ЭСФ' в исходной таблице")
 
     target_header = source_header + ["Время добавления", "Обновлено", "UseDesk", "Telegram"]
     target_rows = target_ws.get_all_values()
@@ -68,10 +69,11 @@ def main():
     added, updated = 0, 0
 
     for source_row in source_data:
-        if len(source_row) <= max(tin_idx, esf_idx):
+        if len(source_row) <= max(tin_idx, esf_idx, name_idx):
             continue
 
         tin = source_row[tin_idx].strip()
+        name = source_row[name_idx].strip()
         esf_status = source_row[esf_idx].strip()
 
         if tin in target_tin_map:
@@ -96,6 +98,7 @@ def main():
             continue
 
         esf_status = row[esf_idx].strip()
+        name = row[name_idx].strip() if name_idx < len(row) else ""
         usedesk_status = row[-2].strip()
         telegram_status = row[-1].strip()
 
@@ -123,10 +126,10 @@ def main():
                         "api_token": USE_DESK_TOKEN,
                         "ticket_id": ticket_id,
                         "message": (
-                            "Здравствуйте!\n\n"
-                            "При подписании ЭСФ у нашего клиента выходит ошибка - NO_REQUIRED_TAXPAYER_STATE.\n"
-                            f"ИИН - {tin}\n"
-                            "Исправьте, пожалуйста."
+                            f"Здравствуйте!\n\n"
+                            f"При подписании ЭСФ у нашего клиента выходит ошибка - NO_REQUIRED_TAXPAYER_STATE.\n"
+                            f"{name}, его ИИН — {tin}\n"
+                            f"Просим исправить."
                         ),
                         "cc": ["5599881@mail.ru", "djamil1ex@gmail.com"],
                         "type": "public",
