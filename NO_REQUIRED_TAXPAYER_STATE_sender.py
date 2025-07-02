@@ -21,7 +21,7 @@ def main():
     save_credentials()
 
     SPREADSHEET_ID = '1JeYJqv5q_S3CfC855Tl5xjP7nD5Fkw9jQXrVyvEXK1Y'
-    SHEET_NAME = 'NO_REQUIRED_TAXPAYER_STATE'
+    TARGET_SHEET = 'NO_REQUIRED_TAXPAYER_STATE'
 
     USE_DESK_TOKEN = os.getenv("USE_DESK_TOKEN")
     TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
@@ -31,73 +31,72 @@ def main():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     creds = ServiceAccountCredentials.from_json_keyfile_name('credentials.json', scope)
     client = gspread.authorize(creds)
-    ws = client.open_by_key(SPREADSHEET_ID).worksheet(SHEET_NAME)
 
-    rows = ws.get_all_values()
-    header = rows[0]
-    data = rows[1:]
+    spreadsheet = client.open_by_key(SPREADSHEET_ID)
+    target_ws = spreadsheet.worksheet(TARGET_SHEET)
+    almaty_now = datetime.now(timezone(timedelta(hours=5))).strftime("%Y-%m-%d %H:%M:%S")
 
-    try:
-        tin_idx = header.index("tin")
-        usedesk_idx = header.index("UseDesk")
-        telegram_idx = header.index("Telegram")
-    except ValueError:
-        raise Exception("❌ Не найдены нужные колонки в таблице")
+    target_rows = target_ws.get_all_values()
+    target_header = target_rows[0]
+    tin_idx = target_header.index("tin")
+    esf_idx = target_header.index("Статус ЭСФ")
 
-    for i, row in enumerate(data, start=2):
+    added = 0
+
+    for i, row in enumerate(target_rows[1:], start=2):
         tin = row[tin_idx].strip()
-        usedesk_status = row[usedesk_idx].strip() if len(row) > usedesk_idx else ""
-        telegram_status = row[telegram_idx].strip() if len(row) > telegram_idx else ""
+        esf_status = row[esf_idx].strip()
+        usedesk_status = row[-2].strip()
+        telegram_status = row[-1].strip()
 
-        if not usedesk_status:
-            # Step 1: create ticket with private message
-            private_msg = f"Ошибка клиента: NO_REQUIRED_TAXPAYER_STATE\nИИН: {tin}"
-            ticket_payload = {
+        if esf_status != "NO_REQUIRED_TAXPAYER_STATE" or usedesk_status:
+            continue
+
+        # Шаг 1: создаём тикет с приватным комментарием
+        ticket_payload = {
+            "api_token": USE_DESK_TOKEN,
+            "subject": "NO_REQUIRED_TAXPAYER_STATE",
+            "message": f"Ошибка клиента: NO_REQUIRED_TAXPAYER_STATE\nИИН: {tin}",
+            "client_email": "djamil1ex@gmail.com",
+            "from": "user",
+            "channel_id": 64326,
+            "status": "2",
+            "private_comment": True
+        }
+
+        ticket_resp = requests.post("https://api.usedesk.ru/create/ticket", json=ticket_payload)
+        logger.warning(f"Ответ create/ticket: {ticket_resp.text}")
+
+        if ticket_resp.status_code == 200 and ticket_resp.json().get("ticket_id"):
+            ticket_id = ticket_resp.json().get("ticket_id")
+            ticket_url = f"https://secure.usedesk.ru/tickets/{ticket_id}"
+            target_ws.update_cell(i, len(target_header) - 1, ticket_url)
+            usedesk_status = ticket_url
+
+            # Шаг 2: добавляем публичный комментарий с копией
+            comment_payload = {
                 "api_token": USE_DESK_TOKEN,
-                "subject": "NO_REQUIRED_TAXPAYER_STATE",
-                "client_email": "djamil21ex@gmail.com",
-                "message": private_msg,
+                "ticket_id": ticket_id,
+                "message": (
+                    f"<p>Здравствуйте!<br><br>"
+                    f"При подписании ЭСФ у нашего клиента выходит ошибка - <b>NO_REQUIRED_TAXPAYER_STATE</b>.<br>"
+                    f"ИИН клиента — {tin}<br>"
+                    f"Просим исправить.<br></p>"
+                ),
+                "type": "public",
                 "from": "user",
-                "channel_id": 64326,
-                "status": "2"
+                "cc": ["5599881@mail.ru"]
             }
 
-            ticket_resp = requests.post("https://api.usedesk.ru/create/ticket", json=ticket_payload)
-            logger.warning(f"Ответ create/ticket: {ticket_resp.text}")
+            comment_resp = requests.post("https://api.usedesk.ru/create/comment", json=comment_payload)
+            logger.warning(f"Ответ create/comment: {comment_resp.text}")
 
-            if ticket_resp.status_code == 200:
-                ticket_id = ticket_resp.json().get("ticket_id")
-                if ticket_id:
-                    ticket_url = f"https://secure.usedesk.ru/tickets/{ticket_id}"
-                    ws.update_cell(i, usedesk_idx + 1, ticket_url)
-
-                    # Step 2: send public comment with cc
-                    public_msg = (
-                        f"<p>Здравствуйте!<br><br>При подписании ЭСФ у нашего клиента выходит ошибка — <b>NO_REQUIRED_TAXPAYER_STATE</b>.<br>"
-                        f"ИИН клиента — {tin}<br>Просим исправить.<br></p>"
-                    )
-                    comment_payload = {
-                        "api_token": USE_DESK_TOKEN,
-                        "ticket_id": ticket_id,
-                        "message": public_msg,
-                        "type": "public",
-                        "from": "user",
-                        "cc": ["djamil1ex@gmail.com", "5599881@mail.ru"]
-                    }
-
-                    comment_resp = requests.post("https://api.usedesk.ru/create/comment", json=comment_payload)
-                    logger.warning(f"Ответ create/comment: {comment_resp.text}")
-                else:
-                    logger.error(f"❌ ticket_id отсутствует в ответе UseDesk для {tin}")
-            else:
-                logger.error(f"❌ Ошибка UseDesk: {ticket_resp.status_code} — {ticket_resp.text}")
-
-        if usedesk_status and not telegram_status:
+            # Шаг 3: отправляем в Telegram
             text = (
                 f"🚨 Ошибка у клиента:\n"
                 f"ИИН: {tin}\n"
                 f"Ошибка: NO_REQUIRED_TAXPAYER_STATE\n"
-                f"Тикет создан: {usedesk_status}"
+                f"Тикет создан: {ticket_url}"
             )
             tg_response = requests.post(
                 f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage",
@@ -108,11 +107,13 @@ def main():
                 }
             )
             if tg_response.status_code == 200:
-                ws.update_cell(i, telegram_idx + 1, "отправлено")
+                target_ws.update_cell(i, len(target_header), "отправлено")
             else:
                 logger.error(f"❌ Ошибка Telegram для {tin}: {tg_response.text}")
 
-    logger.info("✅ Готово!")
+            added += 1
+
+    logger.info(f"✅ Готово! Добавлено: {added}")
 
 if __name__ == "__main__":
     main()
