@@ -113,19 +113,20 @@ def main():
             ticket_id = result.get("ticket_id")
 
             if ticket_id:
-                comment_payload = {
-                    "api_token": USE_DESK_TOKEN,
-                    "ticket_id": ticket_id,
-                    "message": (
-                        f"<p>Здравствуйте!<br><br>"
-                        f"При подписании ЭСФ у нашего клиента выходит ошибка - <b>NO_REQUIRED_TAXPAYER_STATE</b>.<br>"
-                        f"ИИН клиента — {tin}<br>"
-                        f"Просим исправить.<br></p>"
-                    ),
-                    "type": "public",
-                    "from": "user",
-                    "cc": ["5599881@mail.ru"]
-                }
+ticket_payload = {
+    "api_token": USE_DESK_TOKEN,
+    "subject": f"NO_REQUIRED_TAXPAYER_STATE",
+    "client_email": "djamil1ex@gmail.com",
+    "message": (
+        f"<p>Здравствуйте!<br><br>"
+        f"При подписании ЭСФ у нашего клиента выходит ошибка - <b>NO_REQUIRED_TAXPAYER_STATE</b>.<br>"
+        f"ИИН клиента — {tin}<br>"
+        f"Просим исправить.<br></p>"
+    ),
+    "from": "user",
+    "channel_id": 64326,
+    "status": "2"
+}
                 requests.post(USE_DESK_COMMENT_URL, json=comment_payload)
                 ticket_url = f"https://secure.usedesk.ru/tickets/{ticket_id}"
                 target_ws.update_cell(row_num, len(target_header) - 1, ticket_url)
