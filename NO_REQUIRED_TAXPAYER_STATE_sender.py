@@ -110,7 +110,7 @@ def main():
                     f"ИИН клиента — {tin}<br>"
                     f"Просим исправить.<br></p>"
                 ),
-                "client_email": "djamil1ex@gmail.com",
+                "client_email": "djamil1ex@gmail.com,5599881@mail.ru",
                 "from": "user",
                 "channel_id": 64326,
                 "status": "2"
