@@ -99,18 +99,16 @@ def main():
             continue
 
         if not usedesk_status:
-            full_message = (
-                f"<p>Здравствуйте!<br><br>"
-                f"При подписании ЭСФ у нашего клиента выходит ошибка - <b>NO_REQUIRED_TAXPAYER_STATE</b>.<br>"
-                f"ИИН клиента — {tin}<br>"
-                f"Просим исправить.<br></p>"
-            )
-
-            # Шаг 1: создаём тикет с основным сообщением и копией
+            # Шаг 1: создаём тикет
             ticket_payload = {
                 "api_token": USE_DESK_TOKEN,
                 "subject": "NO_REQUIRED_TAXPAYER_STATE",
-                "message": full_message,
+                "message": (
+                    f"<p>Здравствуйте!<br><br>"
+                    f"При подписании ЭСФ у нашего клиента выходит ошибка - NO_REQUIRED_TAXPAYER_STATE.<br>"
+                    f"ИИН клиента — {tin}<br>"
+                    f"Просим исправить.<br></p>"
+                ),
                 "client_email": "djamil1ex@gmail.com",
                 "from": "user",
                 "channel_id": 64326,
@@ -128,8 +126,8 @@ def main():
                     target_ws.update_cell(row_num, len(target_header) - 1, ticket_url)
                     usedesk_status = ticket_url
 
-                    # Шаг 2: приватный комментарий без cc
-                    private_comment_payload = {
+                    # Шаг 2: добавляем приватный комментарий
+                    private_payload = {
                         "api_token": USE_DESK_TOKEN,
                         "ticket_id": ticket_id,
                         "message": f"Ошибка клиента: NO_REQUIRED_TAXPAYER_STATE\nИИН: {tin}",
@@ -137,8 +135,9 @@ def main():
                         "from": "user",
                         "private_comment": True
                     }
-                    comment_resp = requests.post("https://api.usedesk.ru/create/comment", json=private_comment_payload)
-                    logger.warning(f"Ответ create/comment: {comment_resp.text}")
+
+                    comment_resp = requests.post("https://api.usedesk.ru/create/comment", json=private_payload)
+                    logger.warning(f"Ответ create/private_comment: {comment_resp.text}")
                 else:
                     logger.error(f"❌ ticket_id отсутствует в ответе UseDesk для {tin}")
             else:
