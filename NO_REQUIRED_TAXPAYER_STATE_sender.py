@@ -103,11 +103,13 @@ def main():
             ticket_payload = {
                 "api_token": USE_DESK_TOKEN,
                 "subject": "NO_REQUIRED_TAXPAYER_STATE",
+                "message": f"Ошибка клиента: NO_REQUIRED_TAXPAYER_STATE\nИИН: {tin}",
                 "client_email": "djamil1ex@gmail.com",
                 "from": "user",
                 "channel_id": 64326,
                 "status": "2"
             }
+
             ticket_resp = requests.post("https://api.usedesk.ru/create/ticket", json=ticket_payload)
             logger.warning(f"Ответ create/ticket: {ticket_resp.text}")
 
@@ -118,7 +120,7 @@ def main():
                     target_ws.update_cell(row_num, len(target_header) - 1, ticket_url)
                     usedesk_status = ticket_url
 
-                    # Шаг 2: добавляем комментарий с текстом и cc
+                    # Шаг 2: добавляем комментарий с cc
                     comment_payload = {
                         "api_token": USE_DESK_TOKEN,
                         "ticket_id": ticket_id,
@@ -132,12 +134,13 @@ def main():
                         "from": "user",
                         "cc": ["5599881@mail.ru"]
                     }
+
                     comment_resp = requests.post("https://api.usedesk.ru/create/comment", json=comment_payload)
                     logger.warning(f"Ответ create/comment: {comment_resp.text}")
                 else:
-                    logger.error(f"❌ ticket_id не найден в ответе UseDesk для {tin}")
+                    logger.error(f"❌ ticket_id отсутствует в ответе UseDesk для {tin}")
             else:
-                logger.error(f"❌ Ошибка создания тикета: {ticket_resp.status_code} — {ticket_resp.text}")
+                logger.error(f"❌ Ошибка UseDesk: {ticket_resp.status_code} — {ticket_resp.text}")
 
         if usedesk_status and not telegram_status:
             text = (
