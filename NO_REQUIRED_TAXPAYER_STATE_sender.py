@@ -117,12 +117,12 @@ def main():
             ticket_payload = {
                 "api_token": USE_DESK_TOKEN,
                 "subject": "NO_REQUIRED_TAXPAYER_STATE",
-                "message": "автоматическиго",
+                "message": "автоматическиғооо",
                 "private_comment": "true",
                 "client_email": "djamil1ex@gmail.com",
                 "from": "user",
                 "channel_id": 64326,
-                "status": "1"
+                "status": "2"
             }
             response = requests.post(USE_DESK_TICKET_URL, json=ticket_payload)
             try:
