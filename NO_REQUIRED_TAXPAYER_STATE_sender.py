@@ -119,7 +119,7 @@ def main():
                 "subject": "NO_REQUIRED_TAXPAYER_STATE",
                 "message": "автоматическиго",
                 "private_comment": "true",
-                "client_email": "djamil1ex@gmail.com",
+                "client_email": "esfsd@kgd.minfin.gov.kz",
                 "from": "user",
                 "channel_id": 64326,
                 "status": "2"
@@ -139,9 +139,9 @@ def main():
                             f"<p>Здравствуйте!</p>"
                             f"<p>При подписании ЭСФ у нашего клиента выходит ошибка - <b>NO_REQUIRED_TAXPAYER_STATE</b>.</p>"
                             f"<p>{name}, его ИИН — {tin}</p>"
-                            f"<p>Просим исправить.</p>"
+                            f"<p>Можете исправить, пожалуйста.</p>"
                         ),
-                        "cc": ["5599881@mail.ru", "djamil1ex@gmail.com"],
+                        "cc": ["esfsd@kgd.minfin.gov.kz", "esfsupport@osdkz.com"],
                         "type": "public",
                         "from": "user"
                     }
