@@ -57,7 +57,6 @@ def main():
                 "subject": "NO_REQUIRED_TAXPAYER_STATE",
                 "client_email": "djamil21ex@gmail.com",
                 "message": private_msg,
-                "type": "private",
                 "from": "user",
                 "channel_id": 64326,
                 "status": "2"
