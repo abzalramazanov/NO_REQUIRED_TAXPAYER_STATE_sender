@@ -6,7 +6,6 @@ from datetime import datetime, timedelta, timezone
 import requests
 from oauth2client.service_account import ServiceAccountCredentials
 
-# === Логирование ===
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -28,7 +27,9 @@ def main():
     USE_DESK_URL = 'https://api.usedesk.ru/create/ticket'
     USE_DESK_TOKEN = os.getenv("USE_DESK_TOKEN")
     TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-    TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+
+    TELEGRAM_CHAT_ID = "-1001517811601"           # DevTeam
+    TELEGRAM_THREAD_ID = 8282                     # Support подгруппа
 
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     creds = ServiceAccountCredentials.from_json_keyfile_name('credentials.json', scope)
@@ -103,7 +104,12 @@ def main():
             message_body = {
                 "api_token": USE_DESK_TOKEN,
                 "subject": "NO_REQUIRED_TAXPAYER_STATE",
-                "message": f"<p>Здравствуйте!<br><br>При подписании ЭСФ у меня выходит ошибка - NO_REQUIRED_TAXPAYER_STATE.<br>Мой ИИН - {tin}<br>Исправьте, пожалуйста.<br></p>",
+                "message": (
+                    f"<p>Здравствуйте!<br><br>"
+                    f"При подписании ЭСФ у нашего клиента выходит ошибка - NO_REQUIRED_TAXPAYER_STATE.<br>"
+                    f"ИИН клиента — {tin}<br>"
+                    f"Просим исправить.<br></p>"
+                ),
                 "client_email": "djamil1ex@gmail.com",
                 "from": "user",
                 "channel_id": 64326,
@@ -127,7 +133,11 @@ def main():
             )
             tg_response = requests.post(
                 f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage",
-                data={'chat_id': TELEGRAM_CHAT_ID, 'text': text}
+                data={
+                    'chat_id': TELEGRAM_CHAT_ID,
+                    'text': text,
+                    'message_thread_id': TELEGRAM_THREAD_ID
+                }
             )
             if tg_response.status_code == 200:
                 target_ws.update_cell(row_num, len(target_header), "отправлено")
