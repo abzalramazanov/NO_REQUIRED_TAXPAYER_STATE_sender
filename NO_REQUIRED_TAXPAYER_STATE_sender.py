@@ -24,7 +24,8 @@ def main():
     SOURCE_SHEET = 'unique drivers main'
     TARGET_SHEET = 'NO_REQUIRED_TAXPAYER_STATE'
 
-    USE_DESK_URL = 'https://api.usedesk.ru/create/ticket'
+    USE_DESK_TICKET_URL = 'https://api.usedesk.ru/create/ticket'
+    USE_DESK_COMMENT_URL = 'https://api.usedesk.ru/create/comment'
     USE_DESK_TOKEN = os.getenv("USE_DESK_TOKEN")
     TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 
@@ -105,7 +106,6 @@ def main():
                 "api_token": USE_DESK_TOKEN,
                 "subject": f"NO_REQUIRED_TAXPAYER_STATE",
                 "client_email": "djamil1ex@gmail.com",
-                "cc": ["5599881@mail.ru"],
                 "message": (
                     f"<p>Здравствуйте!<br><br>"
                     f"При подписании ЭСФ у нашего клиента выходит ошибка - <b>NO_REQUIRED_TAXPAYER_STATE</b>.<br>"
@@ -116,19 +116,28 @@ def main():
                 "channel_id": 64326,
                 "status": "2"
             }
-            response = requests.post(USE_DESK_URL, json=ticket_payload)
+            response = requests.post(USE_DESK_TICKET_URL, json=ticket_payload)
             try:
-                response_json = response.json()
-                logger.warning(f"Ответ create/ticket: {response.text}")
-                ticket_id = response_json.get("ticket_id")
+                res_json = response.json()
+                logger.warning(f"Ответ create/ticket: {res_json}")
+                ticket_id = res_json.get("ticket_id")
                 if ticket_id:
+                    comment_payload = {
+                        "api_token": USE_DESK_TOKEN,
+                        "ticket_id": ticket_id,
+                        "message": ".",
+                        "type": "public",
+                        "from": "user",
+                        "cc": ["5599881@mail.ru"]
+                    }
+                    requests.post(USE_DESK_COMMENT_URL, json=comment_payload)
                     ticket_url = f"https://secure.usedesk.ru/tickets/{ticket_id}"
                     target_ws.update_cell(row_num, len(target_header) - 1, ticket_url)
                     usedesk_status = ticket_url
                 else:
                     logger.error(f"❌ ticket_id не найден в ответе UseDesk для {tin}")
             except Exception as e:
-                logger.error(f"❌ Ошибка парсинга ответа UseDesk: {str(e)}")
+                logger.error(f"❌ Ошибка парсинга ответа UseDesk: {e}")
 
         if usedesk_status and not telegram_status:
             text = (
