@@ -117,7 +117,7 @@ def main():
             ticket_payload = {
                 "api_token": USE_DESK_TOKEN,
                 "subject": "NO_REQUIRED_TAXPAYER_STATE",
-                "message": "автоматическиғооо",
+                "message": "автоматическиго",
                 "private_comment": "true",
                 "client_email": "djamil1ex@gmail.com",
                 "from": "user",
@@ -135,10 +135,11 @@ def main():
                         "api_token": USE_DESK_TOKEN,
                         "ticket_id": ticket_id,
                         "message": (
-                            f"Здравствуйте!\n\n"
-                            f"При подписании ЭСФ у нашего клиента выходит ошибка - NO_REQUIRED_TAXPAYER_STATE.\n"
-                            f"{name}, его ИИН — {tin}\n"
-                            f"Просим исправить."
+
+                            f"<p>Здравствуйте!</p>"
+                            f"<p>При подписании ЭСФ у нашего клиента выходит ошибка - <b>NO_REQUIRED_TAXPAYER_STATE</b>.</p>"
+                            f"<p>{name}, его ИИН — {tin}</p>"
+                            f"<p>Просим исправить.</p>"
                         ),
                         "cc": ["5599881@mail.ru", "djamil1ex@gmail.com"],
                         "type": "public",
