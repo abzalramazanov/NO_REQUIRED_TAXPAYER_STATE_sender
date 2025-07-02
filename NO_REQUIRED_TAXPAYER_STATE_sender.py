@@ -101,31 +101,35 @@ def main():
             continue
 
         if not usedesk_status:
-message_body = {
-    "api_token": USE_DESK_TOKEN,
-    "subject": "NO_REQUIRED_TAXPAYER_STATE",
-    "message": (
-        f"<p>Здравствуйте!<br><br>"
-        f"При подписании ЭСФ у нашего клиента выходит ошибка - NO_REQUIRED_TAXPAYER_STATE.<br>"
-        f"ИИН клиента — {tin}<br>"
-        f"Просим исправить.<br></p>"
-    ),
-    "client_email": "djamil1ex@gmail.com",
-    "cc": [
-        "5599881@mail.ru"
-    ],
-    "from": "user",
-    "channel_id": 64326,
-    "status": "2"
-}
+            message_body = {
+                "api_token": USE_DESK_TOKEN,
+                "subject": "NO_REQUIRED_TAXPAYER_STATE",
+                "message": (
+                    f"<p>Здравствуйте!<br><br>"
+                    f"При подписании ЭСФ у нашего клиента выходит ошибка - NO_REQUIRED_TAXPAYER_STATE.<br>"
+                    f"ИИН клиента — {tin}<br>"
+                    f"Просим исправить.<br></p>"
+                ),
+                "client_email": "djamil1ex@gmail.com",
+                "cc": ["5599881@mail.ru"],
+                "from": "user",
+                "channel_id": 64326,
+                "status": "2"
+            }
+
             response = requests.post(USE_DESK_URL, json=message_body)
+            logger.warning(f"Ответ UseDesk: {response.text}")
+
             if response.status_code == 200:
-                ticket_id = response.json().get("ticket_id")
-                ticket_url = f"https://secure.usedesk.ru/tickets/{ticket_id}"
-                target_ws.update_cell(row_num, len(target_header) - 1, ticket_url)
-                usedesk_status = ticket_url
+                ticket_id = response.json().get("ticket", {}).get("id")
+                if ticket_id:
+                    ticket_url = f"https://secure.usedesk.ru/tickets/{ticket_id}"
+                    target_ws.update_cell(row_num, len(target_header) - 1, ticket_url)
+                    usedesk_status = ticket_url
+                else:
+                    logger.error(f"❌ ticket_id отсутствует в ответе UseDesk для {tin}, ответ: {response.text}")
             else:
-                logger.error(f"❌ Ошибка UseDesk для {tin}: {response.text}")
+                logger.error(f"❌ Ошибка UseDesk для {tin}: {response.status_code} — {response.text}")
 
         if usedesk_status and not telegram_status:
             text = (
