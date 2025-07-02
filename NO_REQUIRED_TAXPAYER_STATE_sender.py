@@ -24,13 +24,12 @@ def main():
     SOURCE_SHEET = 'unique drivers main'
     TARGET_SHEET = 'NO_REQUIRED_TAXPAYER_STATE'
 
-    USE_DESK_TICKET_URL = 'https://api.usedesk.ru/create/ticket'
-    USE_DESK_COMMENT_URL = 'https://api.usedesk.ru/create/comment'
+    USE_DESK_URL = 'https://api.usedesk.ru/create/ticket'
     USE_DESK_TOKEN = os.getenv("USE_DESK_TOKEN")
     TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 
-    TELEGRAM_CHAT_ID = "-1001517811601"           # DevTeam
-    TELEGRAM_THREAD_ID = 8282                     # Support подгруппа
+    TELEGRAM_CHAT_ID = "-1001517811601"
+    TELEGRAM_THREAD_ID = 8282
 
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     creds = ServiceAccountCredentials.from_json_keyfile_name('credentials.json', scope)
@@ -46,8 +45,11 @@ def main():
     source_header = source_rows[0]
     source_data = source_rows[1:]
 
-    tin_idx = source_header.index("tin")
-    esf_idx = source_header.index("Статус ЭСФ")
+    try:
+        tin_idx = source_header.index("tin")
+        esf_idx = source_header.index("Статус ЭСФ")
+    except ValueError:
+        raise Exception("❌ Не найдены колонки 'tin' и 'Статус ЭСФ' в исходной таблице")
 
     target_header = source_header + ["Время добавления", "Обновлено", "UseDesk", "Telegram"]
     target_rows = target_ws.get_all_values()
@@ -56,11 +58,10 @@ def main():
         target_ws.update("A1", [target_header])
         target_rows = target_ws.get_all_values()
 
-    target_tin_map = {
-        row[tin_idx].strip(): (i + 2, row)
-        for i, row in enumerate(target_rows[1:])
-        if len(row) > tin_idx
-    }
+    target_tin_map = {}
+    for i, row in enumerate(target_rows[1:], start=2):
+        if len(row) > tin_idx:
+            target_tin_map[row[tin_idx].strip()] = (i, row)
 
     added, updated = 0, 0
 
@@ -74,6 +75,7 @@ def main():
         if tin in target_tin_map:
             row_num, target_row = target_tin_map[tin]
             old_status = target_row[esf_idx] if esf_idx < len(target_row) else ""
+
             if old_status != esf_status:
                 target_ws.update_cell(row_num, esf_idx + 1, esf_status)
                 target_ws.update_cell(row_num, len(source_header) + 2, almaty_now)
@@ -103,37 +105,30 @@ def main():
                 "api_token": USE_DESK_TOKEN,
                 "subject": f"NO_REQUIRED_TAXPAYER_STATE",
                 "client_email": "djamil1ex@gmail.com",
+                "cc": ["5599881@mail.ru"],
+                "message": (
+                    f"<p>Здравствуйте!<br><br>"
+                    f"При подписании ЭСФ у нашего клиента выходит ошибка - <b>NO_REQUIRED_TAXPAYER_STATE</b>.<br>"
+                    f"ИИН клиента — {tin}<br>"
+                    f"Просим исправить.<br></p>"
+                ),
                 "from": "user",
                 "channel_id": 64326,
                 "status": "2"
             }
-            response = requests.post(USE_DESK_TICKET_URL, json=ticket_payload)
-            logger.warning(f"Ответ create/ticket: {response.text}")
-            result = response.json()
-            ticket_id = result.get("ticket_id")
-
-            if ticket_id:
-ticket_payload = {
-    "api_token": USE_DESK_TOKEN,
-    "subject": f"NO_REQUIRED_TAXPAYER_STATE",
-    "client_email": "djamil1ex@gmail.com",
-    "message": (
-        f"<p>Здравствуйте!<br><br>"
-        f"При подписании ЭСФ у нашего клиента выходит ошибка - <b>NO_REQUIRED_TAXPAYER_STATE</b>.<br>"
-        f"ИИН клиента — {tin}<br>"
-        f"Просим исправить.<br></p>"
-    ),
-    "from": "user",
-    "channel_id": 64326,
-    "status": "2"
-}
-                requests.post(USE_DESK_COMMENT_URL, json=comment_payload)
-                ticket_url = f"https://secure.usedesk.ru/tickets/{ticket_id}"
-                target_ws.update_cell(row_num, len(target_header) - 1, ticket_url)
-                usedesk_status = ticket_url
-            else:
-                logger.error(f"❌ ticket_id не найден в ответе UseDesk для {tin}")
-                continue
+            response = requests.post(USE_DESK_URL, json=ticket_payload)
+            try:
+                response_json = response.json()
+                logger.warning(f"Ответ create/ticket: {response.text}")
+                ticket_id = response_json.get("ticket_id")
+                if ticket_id:
+                    ticket_url = f"https://secure.usedesk.ru/tickets/{ticket_id}"
+                    target_ws.update_cell(row_num, len(target_header) - 1, ticket_url)
+                    usedesk_status = ticket_url
+                else:
+                    logger.error(f"❌ ticket_id не найден в ответе UseDesk для {tin}")
+            except Exception as e:
+                logger.error(f"❌ Ошибка парсинга ответа UseDesk: {str(e)}")
 
         if usedesk_status and not telegram_status:
             text = (
@@ -145,9 +140,9 @@ ticket_payload = {
             tg_response = requests.post(
                 f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage",
                 data={
-                    "chat_id": TELEGRAM_CHAT_ID,
-                    "text": text,
-                    "message_thread_id": TELEGRAM_THREAD_ID
+                    'chat_id': TELEGRAM_CHAT_ID,
+                    'text': text,
+                    'message_thread_id': TELEGRAM_THREAD_ID
                 }
             )
             if tg_response.status_code == 200:
