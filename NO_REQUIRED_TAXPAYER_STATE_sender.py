@@ -24,12 +24,10 @@ def main():
     SOURCE_SHEET = 'unique drivers main'
     TARGET_SHEET = 'NO_REQUIRED_TAXPAYER_STATE'
 
-    USE_DESK_URL = 'https://api.usedesk.ru/create/ticket'
     USE_DESK_TOKEN = os.getenv("USE_DESK_TOKEN")
     TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-
-    TELEGRAM_CHAT_ID = "-1001517811601"           # DevTeam
-    TELEGRAM_THREAD_ID = 8282                     # Support подгруппа
+    TELEGRAM_CHAT_ID = "-1001517811601"
+    TELEGRAM_THREAD_ID = 8282
 
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     creds = ServiceAccountCredentials.from_json_keyfile_name('credentials.json', scope)
@@ -101,35 +99,45 @@ def main():
             continue
 
         if not usedesk_status:
-            message_body = {
+            # Шаг 1: создаём тикет
+            ticket_payload = {
                 "api_token": USE_DESK_TOKEN,
                 "subject": "NO_REQUIRED_TAXPAYER_STATE",
-                "message": (
-                    f"<p>Здравствуйте!<br><br>"
-                    f"При подписании ЭСФ у нашего клиента выходит ошибка - NO_REQUIRED_TAXPAYER_STATE.<br>"
-                    f"ИИН клиента — {tin}<br>"
-                    f"Просим исправить.<br></p>"
-                ),
                 "client_email": "djamil1ex@gmail.com",
-                "cc": ["5599881@mail.ru"],
                 "from": "user",
                 "channel_id": 64326,
                 "status": "2"
             }
+            ticket_resp = requests.post("https://api.usedesk.ru/create/ticket", json=ticket_payload)
+            logger.warning(f"Ответ create/ticket: {ticket_resp.text}")
 
-            response = requests.post(USE_DESK_URL, json=message_body)
-            logger.warning(f"Ответ UseDesk: {response.text}")
-
-            if response.status_code == 200:
-                ticket_id = response.json().get("ticket", {}).get("id")
+            if ticket_resp.status_code == 200:
+                ticket_id = ticket_resp.json().get("ticket_id")
                 if ticket_id:
                     ticket_url = f"https://secure.usedesk.ru/tickets/{ticket_id}"
                     target_ws.update_cell(row_num, len(target_header) - 1, ticket_url)
                     usedesk_status = ticket_url
+
+                    # Шаг 2: добавляем комментарий с текстом и cc
+                    comment_payload = {
+                        "api_token": USE_DESK_TOKEN,
+                        "ticket_id": ticket_id,
+                        "message": (
+                            f"<p>Здравствуйте!<br><br>"
+                            f"При подписании ЭСФ у нашего клиента выходит ошибка - NO_REQUIRED_TAXPAYER_STATE.<br>"
+                            f"ИИН клиента — {tin}<br>"
+                            f"Просим исправить.<br></p>"
+                        ),
+                        "type": "public",
+                        "from": "user",
+                        "cc": ["5599881@mail.ru"]
+                    }
+                    comment_resp = requests.post("https://api.usedesk.ru/create/comment", json=comment_payload)
+                    logger.warning(f"Ответ create/comment: {comment_resp.text}")
                 else:
-                    logger.error(f"❌ ticket_id отсутствует в ответе UseDesk для {tin}, ответ: {response.text}")
+                    logger.error(f"❌ ticket_id не найден в ответе UseDesk для {tin}")
             else:
-                logger.error(f"❌ Ошибка UseDesk для {tin}: {response.status_code} — {response.text}")
+                logger.error(f"❌ Ошибка создания тикета: {ticket_resp.status_code} — {ticket_resp.text}")
 
         if usedesk_status and not telegram_status:
             text = (
