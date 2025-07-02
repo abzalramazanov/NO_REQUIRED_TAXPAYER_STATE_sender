@@ -1,3 +1,4 @@
+
 import os
 import gspread
 import logging
@@ -105,31 +106,31 @@ def main():
             ticket_payload = {
                 "api_token": USE_DESK_TOKEN,
                 "subject": "NO_REQUIRED_TAXPAYER_STATE",
-                "message": "автоматически созданный тикет.",
-                "private_comment": True,
+                "message": "автоматическиго",
+                "private_comment": "true",
                 "client_email": "djamil1ex@gmail.com",
+                "from": "user",
                 "channel_id": 64326,
-                "status": "2"
+                "status": "1"
             }
             response = requests.post(USE_DESK_TICKET_URL, json=ticket_payload)
             try:
                 res_json = response.json()
                 logger.warning(f"Ответ create/ticket: {res_json}")
-                ticket_id = res_json.get("ticket_id")
+                ticket_id = res_json.get("ticket", {}).get("id")
                 if ticket_id:
                     comment_payload = {
                         "api_token": USE_DESK_TOKEN,
                         "ticket_id": ticket_id,
                         "message": (
-                            f"<p>Здравствуйте!<br><br>"
-                            f"При подписании ЭСФ у нашего клиента выходит ошибка - "
-                            f"<b>NO_REQUIRED_TAXPAYER_STATE</b>.<br>"
-                            f"ИИН клиента — {tin}<br>"
-                            f"Просим исправить.<br></p>"
+                            "Здравствуйте!\n\n"
+                            "При подписании ЭСФ у нашего клиента выходит ошибка - NO_REQUIRED_TAXPAYER_STATE.\n"
+                            f"ИИН - {tin}\n"
+                            "Исправьте, пожалуйста."
                         ),
+                        "cc": ["5599881@mail.ru", "djamil1ex@gmail.com"],
                         "type": "public",
-                        "from": "user",
-                        "cc": ["5599881@mail.ru", "djamil1ex@gmail.com"]
+                        "from": "user"
                     }
                     comment_response = requests.post(USE_DESK_COMMENT_URL, json=comment_payload)
                     if comment_response.status_code == 200:
