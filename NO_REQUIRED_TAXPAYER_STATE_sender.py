@@ -7,14 +7,6 @@ from datetime import datetime, timedelta, timezone
 import requests
 from oauth2client.service_account import ServiceAccountCredentials
 
-import os
-import gspread
-import logging
-import base64
-from datetime import datetime, timedelta, timezone
-import requests
-from oauth2client.service_account import ServiceAccountCredentials
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -116,7 +108,7 @@ def main():
         if not usedesk_status:
             ticket_payload = {
                 "api_token": USE_DESK_TOKEN,
-                "subject": "NO_REQUIRED_TAXPAYER_STATE",
+                "subject": f"NO_REQUIRED_TAXPAYER_STATE {tin}",  # 👈 тема с ИИН
                 "message": "автоматическиго",
                 "private_comment": "true",
                 "client_email": "esfsd@kgd.minfin.gov.kz",
@@ -135,7 +127,6 @@ def main():
                         "api_token": USE_DESK_TOKEN,
                         "ticket_id": ticket_id,
                         "message": (
-
                             f"<p>Здравствуйте!</p>"
                             f"<p>При подписании ЭСФ у нашего клиента выходит ошибка - <b>NO_REQUIRED_TAXPAYER_STATE</b>.</p>"
                             f"<p>{name}, его ИИН — {tin}</p>"
